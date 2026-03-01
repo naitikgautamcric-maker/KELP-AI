@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🦦 Kelp AI</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        /* ==================== LOADING SCREEN ==================== */
+        .loading-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #00C9A7 0%, #008E76 100%);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            transition: opacity 0.5s ease, visibility 0.5s ease;
+        }
+
+        .loading-screen.hidden {
+            opacity: 0;
+            visibility: hidden;
+        }
+
+        .loader {
+            width: 80px;
+            height: 80px;
+            position: relative;
+        }
+
+        .loader::before,
+        .loader::after {
+            content: '';
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            background: white;
+            animation: pulse 1.5s infinite ease-in-out;
+        }
+
+        .loader::after {
+            animation-delay: 0.75s;
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                transform: scale(0);
+                opacity: 1;
+            }
+            50% {
+                transform: scale(1);
+                opacity: 0;
+            }
+        }
+
+        .loading-text {
+            color: white;
+            font-size: 28px;
+            margin-top: 30px;
+            font-weight: bold;
+            animation: blink 1s infinite;
+        }
+
+        .loading-subtext {
+            color: rgba(255,255,255,0.7);
+            font-size: 14px;
+            margin-top: 10px;
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        /* ==================== CHATBOT UI ==================== */
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #00C9A7 0%, #008E76 100%);
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            opacity: 0;
+            transition: opacity 0.5s ease;
+        }
+
+        body.show {
+            opacity: 1;
+        }
+
+        .chat-container {
+            width: 400px;
+            height: 600px;
+            background: #fff;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .chat-header {
+            background: linear-gradient(135deg, #00C9A7 0%, #008E76 100%);
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .chat-header h1 {
+            font-size: 24px;
+            margin-bottom: 5px;
+        }
+
+        .chat-header p {
+            font-size: 12px;
+            opacity: 0.8;
+        }
+
+        .bot-avatar {
+            width: 60px;
+            height: 60px;
+            background: white;
+            border-radius: 50%;
+            margin: 0 auto 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 32px;
+            border: 3px solid white;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+
+        .chat-messages {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            background: #f5f5f5;
+        }
+
+        .message {
+            margin-bottom: 15px;
+            max-width: 80%;
+            padding: 12px 16px;
+            border-radius: 18px;
+            font-size: 14px;
+            line-height: 1.4;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .bot-message {
+            background: #e9e9e9;
+            color: #333;
+            border-bottom-left-radius: 5px;
+            align-self: flex-start;
+        }
+
+        .user-message {
+            background: linear-gradient(135deg, #00C9A7 0%, #008E76 100%);
+            color: white;
+            border-bottom-right-radius: 5px;
+            margin-left: auto;
+        }
+
+        .message-header {
+            font-size: 10px;
+            opacity: 0.7;
+            margin-bottom: 4px;
+        }
+
+        .typing-indicator {
+            display: none;
+            padding: 12px 16px;
+            background: #e9e9e9;
+            border-radius: 18px;
+            border-bottom-left-radius: 5px;
+            margin-bottom: 15px;
+        }
+
+        .typing-indicator span {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            background: #666;
+            border-radius: 50%;
+            margin: 0 2px;
+            animation: bounce 1.4s infinite ease-in-out;
+        }
+
+        .typing-indicator span:nth-child(1) { animation-delay: 0s; }
+        .typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
+        .typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
+
+        @keyframes bounce {
+            0%, 80%, 100% { transform: translateY(0); }
+            40% { transform: translateY(-10px); }
+        }
+
+        .chat-input {
+            padding: 15px;
+            background: white;
+            border-top: 1px solid #eee;
+            display: flex;
+            gap: 10px;
+        }
+
+        .chat-input input {
+            flex: 1;
+            padding: 12px 18px;
+            border: 2px solid #eee;
+            border-radius: 25px;
+            font-size: 14px;
+            outline: none;
+            transition: 0.3s;
+        }
+
+        .chat-input input:focus {
+            border-color: #00C9A7;
+        }
+
+        .chat-input button {
+            width: 45px;
+            height: 45px;
+            border: none;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #00C9A7 0%, #008E76 100%);
+            color: white;
+            font-size: 18px;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+
+        .chat-input button:hover {
+            transform: scale(1.1);
+        }
+
+        .quick-replies {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 15px;
+        }
+
+        .quick-reply {
+            background: linear-gradient(135deg, #00C9A7 0%, #008E76 100%);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 12px;
+            cursor: pointer;
+            border: none;
+            transition: 0.3s;
+        }
+
+        .quick-reply:hover {
+            transform: scale(1.05);
+        }
+
+        .chat-messages::-webkit-scrollbar {
+            width: 5px;
+        }
+
+        .chat-messages::-webkit-scrollbar-thumb {
+            background: #ccc;
+            border-radius: 5px;
+        }
+
+        @media (max-width: 450px) {
+            .chat-container {
+                width: 100%;
+                height: 100%;
+                border-radius: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ==================== LOADING SCREEN ==================== -->
+    <div class="loading-screen" id="loadingScreen">
+        <div class="loader"></div>
+        <div class="loading-text">🦦 Kelp AI</div>
+        <div class="loading-subtext">Loading...</div>
+    </div>
+
+    <!-- ==================== CHATBOT ==================== -->
+    <div class="chat-container">
+        <div class="chat-header">
+            <div class="bot-avatar">🦦</div>
+            <h1>Kelp AI</h1>
+            <p>Online • Hamesha available</p>
+        </div>
+
+        <div class="chat-messages" id="chatMessages">
+            <div class="message bot-message">
+                <div class="message-header">🦦 Kelp AI</div>
+                Namaste! 🙏 Main Kelp AI hoon! Aapki kaise help kar sakta hoon?
+            </div>
+
+            <div class="quick-replies">
+                <button class="quick-reply" onclick="sendQuickReply('tum kaun ho?')">👤 Tum kaun ho?</button>
+                <button class="quick-reply" onclick="sendQuickReply('kya tumse baat kar sakte hain?')">💬 Baat kar sakte hain?</button>
+                <button class="quick-reply" onclick="sendQuickReply('tum kya kar sakte ho?')">⚡ Kya kar sakte ho?</button>
+                <button class="quick-reply" onclick="sendQuickReply('joke sunao')">😂 Joke sunao</button>
+            </div>
+        </div>
+
+        <div class="typing-indicator" id="typingIndicator">
+            <span></span>
+            <span></span>
+            <span></span>
+        </div>
+
+        <div class="chat-input">
+            <input type="text" id="userInput" placeholder="Type a message..." onkeypress="handleKeyPress(event)">
+            <button onclick="sendMessage()">➤</button>
+        </div>
+    </div>
+
+    <script>
+        // ==================== LOADING SCREEN LOGIC ====================
+        window.addEventListener('load', function() {
+            setTimeout(function() {
+                document.getElementById('loadingScreen').classList.add('hidden');
+                document.body.classList.add('show');
+            }, 3000);
+        });
+
+        // ==================== CHATBOT LOGIC ====================
+        
+        // AI Knowledge Base - Now with Kelp AI name
+        const knowledgeBase = {
+            "tum kaun ho": "Main Kelp AI hoon! 🦦 Main ek smart AI chatbot hoon jo aapki help ke liye ready hai!",
+            
+            "tum kaun ho?": "Main Kelp AI hoon! 🦦 Main aapke sawaal ka jawab de sakta hoon, aur baat kar sakta hoon!",
+            
+            "who are you": "I am Kelp AI, a smart chatbot! 🦦",
+            
+            "kya tumse baat kar sakte hain": "Haan, bilkul! 🦦 main aapke saath baat karne ke liye ready hoon. Koi bhi sawaal puchein! 💬",
+            
+            "tum kya kar sakte ho": "Main bahut saari cheezein kar sakta hoon:\n\n✅ Saawalon ke jawab\n✅ Jokes\n✅ Kahaniyan\n✅ Math ke sawal\n✅ Coding mein help\n✅ Aur bohot kuch!",
+            
+            "kya kar sakte ho": "Main bahut saari cheezein kar sakta hoon:\n\n✅ Saawalon ke jawab\n✅ Jokes\n✅ Kahaniyan\n✅ Math ke sawal\n✅ Coding mein help\n✅ Aur bohot kuch!",
+            
+            "hello": "Namaste! 🙏 Kaise hain aap?",
+            
+            "hi": "Namaste! 🙏 Kaise hain aap?",
+            
+            "namaste": "Namaste! 🙏 Aapka din shubh ho!",
+            
+            "kaise hain aap": "Main toh badhiya hoon, thanks puuchne ke liye! 😊 Aap kaise hain?",
+            
+            "main badhiya hoon": "Bahut accha hai! 😄 Kaise help kar sakta hoon aapko?",
+            
+            "joke sunao": "Ek time ek programmer ne pucha - 'Python ya JavaScript?'\n\nUsne JavaScript choose kiya...\n\nAb wo 5 saal se answer dhundh raha hai! 😂\n\n(Hasna mat, aur joke sunna hai?)",
+            
+            "joke": "Ek time ek programmer ne pucha - 'Python ya JavaScript?'\n\nUsne JavaScript choose kiya...\n\nAb wo 5 saal se answer dhundh raha hai! 😂",
+            
+            "math": "Haan, math ke sawal bheje! 🦦 Main solve karunga. ➕➖✖️➗",
+            
+            "2 + 2": "2 + 2 = 4 ✅",
+            
+            "10 * 5": "10 * 5 = 50 ✅",
+            
+            "python": "Python ek bahut popular programming language hai! 📱",
+            
+            "coding": "Coding bohot majedaar hai! 🎯 Start karne ke liye Python ya JavaScript seekh sakte hain.",
+            
+            "help": "Mere paas bohot saari powers hain! 🦦 Koi bhi cheez puchein:\n- General sawal\n- Jokes\n- Math\n- Coding\n- Koi bhi baat",
+            
+            "bye": "Alvida! 👋 Phir baat karein!",
+            
+            "goodbye": "Alvida! 👋 Phir baat karein!",
+            
+            "dhanyavad": "Welcome! 🙏 Koi aur help chahiye?",
+            
+            "thank you": "Welcome! 🙏 Koi aur help chahiye?",
+            
+            "thanks": "Welcome! 🙏 Koi aur help chahiye?",
+            
+            "weather": "Mujhe weather ka pata nahi, lekin ummeed hai aapke yahan accha hai! ☀️"
+        };
+
+        const fallbackResponses = [
+            "Yeh toh interesting sawaal hai! 🦦 Main iske baare mein soch raha hoon...",
+            "Achha! 🦦 Aap yeh puch rahe hain. Koi aur sawaal karein!",
+            "Yeh topic interesting hai! 🦦 Kya aap iske baare mein aur details de sakte hain?",
+            "Main samajh gaya! 🦦 Lekin is question ka exact answer nahi de pa raha.",
+            "Bahut badhiya sawaal! 🦦"
+        ];
+
+        function getBotResponse(userInput) {
+            const input = userInput.toLowerCase().trim();
+            
+            for (let key in knowledgeBase) {
+                if (input.includes(key)) {
+                    return knowledgeBase[key];
+                }
+            }
+
+            if (input.match(/[\d+\-*/]/)) {
+                try {
+                    const result = eval(input.replace(/[^0-9+\-*/.]/g, ''));
+                    if (!isNaN(result)) {
+                        return `Jawab: ${result} ✅`;
+                    }
+                } catch (e) {}
+            }
+
+            return fallbackResponses[Math.floor(Math.random() * fallbackResponses.length)];
+        }
+
+        function addMessage(message, isUser) {
+            const messagesContainer = document.getElementById('chatMessages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${isUser ? 'user-message' : 'bot-message'}`;
+            
+            const time = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+            
+            messageDiv.innerHTML = `
+                <div class="message-header">${isUser ? 'You' : '🦦 Kelp AI'} • ${time}</div>
+                ${message}
+            `;
+            
+            messagesContainer.appendChild(messageDiv);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+
+        function showTyping() {
+            document.getElementById('typingIndicator').style.display = 'block';
+            document.getElementById('chatMessages').scrollTop = document.getElementById('chatMessages').scrollHeight;
+        }
+
+        function hideTyping() {
+            document.getElementById('typingIndicator').style.display = 'none';
+        }
+
+        function sendMessage() {
+            const input = document.getElementById('userInput');
+            const message = input.value.trim();
+            
+            if (message === '') return;
+            
+            addMessage(message, true);
+            input.value = '';
+            
+            showTyping();
+            
+            setTimeout(() => {
+                hideTyping();
+                const response = getBotResponse(message);
+                addMessage(response, false);
+            }, 1000 + Math.random() * 1000);
+        }
+
+        function sendQuickReply(message) {
+            document.getElementById('userInput').value = message;
+            sendMessage();
+        }
+
+        function handleKeyPress(event) {
+            if (event.key === 'Enter') {
+                sendMessage();
+            }
+        }
+    </script>
+
+</body>
+</html>
